@@ -1,0 +1,22 @@
+{
+  "dependencies": {
+    "@types/documentdb": "^1.10.5",
+    "@types/faker": "^4.1.11",
+    "@types/randomstring": "^1.1.6",
+    "documentdb": "^1.15.3",
+    "dotenv": "^8.2.0",
+    "faker": "^4.1.0",
+    "fp-ts": "1.17.4",
+    "io-functions-commons": "^9.0.0",
+    "io-ts": "1.8.5",
+    "italia-ts-commons": "^8.1.0",
+    "randomstring": "^1.1.5",
+    "ts-node": "^8.10.1",
+    "typescript": "^3.9.0",
+    "ulid": "^2.3.0"
+  },
+  "resolutions": {
+    "fp-ts": "1.17.4",
+    "io-ts": "1.8.5"
+  }
+}
