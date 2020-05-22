@@ -1,6 +1,7 @@
 /**
  * Insert fake data into CosmosDB database emulator.
  */
+// tslint:disable: no-submodule-imports object-literal-sort-keys no-let
 import * as dotenv from "dotenv";
 dotenv.config();
 
@@ -175,6 +176,7 @@ const messageCollectionUrl = documentDbUtils.getCollectionUri(
 const messageModel = new MessageModel(
   documentClient,
   messageCollectionUrl,
+  // tslint:disable-next-line: no-any
   "message-content" as any
 );
 
@@ -267,7 +269,6 @@ const getNotificationStatusFixture = (
 ): NotificationStatus =>
   NotificationStatus.decode({
     statusId: ulid.ulid(),
-    fiscalCode: generateFakeFiscalCode(),
     messageId: ulid.ulid(),
     updatedAt: faker.date.past(),
     status: faker.random.arrayElement([
@@ -303,9 +304,9 @@ const generateServiceFixtures = async () => {
 
 const generateMessageFixtures = async (fiscalCode: FiscalCode) => {
   const aMessage = getMessageFixture({
-    fiscalCode: fiscalCode,
+    fiscalCode,
   });
-  messageModel.create(aMessage, aMessage.fiscalCode);
+  await messageModel.create(aMessage, aMessage.fiscalCode);
 
   const aMessageStatus = getMessageStatusFixture({
     messageId: aMessage.id,
@@ -319,7 +320,7 @@ const generateMessageFixtures = async (fiscalCode: FiscalCode) => {
     throw new Error("cannot create new message status");
   });
   // create a new version
-  messageStatusModel.update(
+  await messageStatusModel.update(
     createdMessageStatus.id,
     createdMessageStatus.messageId,
     () => createdMessageStatus
@@ -346,7 +347,7 @@ const generateMessageFixtures = async (fiscalCode: FiscalCode) => {
     }
   );
   // create a new version
-  notificationStatusModel.update(
+  await notificationStatusModel.update(
     createdNotificationStatus.id,
     createdNotificationStatus.notificationId,
     () => createdNotificationStatus
