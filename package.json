@@ -4,6 +4,7 @@
     "start": "ts-node src/index.ts"
   },
   "dependencies": {
+    "azure-storage": "^2.10.3",
     "documentdb": "^1.15.3",
     "dotenv": "^8.2.0",
     "faker": "^4.1.0",

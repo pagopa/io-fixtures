@@ -54,6 +54,9 @@ import { FiscalCode } from "io-functions-commons/dist/generated/definitions/Fisc
 import { MessageStatusValueEnum } from "io-functions-commons/dist/generated/definitions/MessageStatusValue";
 import { NotificationChannelStatusValueEnum } from "io-functions-commons/dist/generated/definitions/NotificationChannelStatusValue";
 
+import { createBlobService } from "azure-storage";
+import { MessageContent } from "io-functions-commons/dist/generated/definitions/MessageContent";
+
 const cosmosDbKey = getRequiredStringEnv("COSMOSDB_KEY");
 const cosmosDbUri = getRequiredStringEnv("COSMOSDB_URI");
 const cosmosDbName = getRequiredStringEnv("COSMOSDB_NAME");
@@ -63,6 +66,11 @@ const documentDbDatabaseUrl = documentDbUtils.getDatabaseUri(cosmosDbName);
 const documentClient = new DocumentDBClient(cosmosDbUri, {
   masterKey: cosmosDbKey,
 });
+
+const storageConnectionString = getRequiredStringEnv(
+  "STORAGE_CONNECTION_STRING"
+);
+const blobService = createBlobService(storageConnectionString);
 
 /**
  * Generate a fake fiscal code.
@@ -302,11 +310,23 @@ const generateServiceFixtures = async () => {
   );
 };
 
+const generateMessageContentFixture = () => {
+  return {
+    markdown: faker.random.words(10),
+    subject: faker.random.words(100),
+  } as MessageContent;
+};
+
 const generateMessageFixtures = async (fiscalCode: FiscalCode) => {
   const aMessage = getMessageFixture({
     fiscalCode,
   });
   await messageModel.create(aMessage, aMessage.fiscalCode);
+  await messageModel.storeContentAsBlob(
+    blobService,
+    aMessage.id,
+    generateMessageContentFixture()
+  );
 
   const aMessageStatus = getMessageStatusFixture({
     messageId: aMessage.id,
@@ -380,6 +400,18 @@ createDatabase(cosmosDbName)
   .then(() => createCollection("services", "serviceId"))
 
   .then(() => generateServiceFixtures())
+
+  .then(
+    () =>
+      new Promise((resolve) =>
+        blobService.createContainerIfNotExists("message-content", (err) =>
+          // tslint:disable-next-line: no-use-of-empty-return-value no-console
+          err ? resolve(console.error(err)) : resolve()
+        )
+      )
+  )
+
   .then(() => generateUserMessageFixtures())
+
   // tslint:disable-next-line: no-console
   .catch(console.error);
