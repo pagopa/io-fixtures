@@ -310,10 +310,13 @@ const generateServiceFixtures = async () => {
   );
 };
 
+const enforceStringRange = (min: number, max: number) => (str: string) =>
+  str.padEnd(min, "-").substring(0, max);
+
 const generateMessageContentFixture = () => {
   return {
-    markdown: faker.random.words(10),
-    subject: faker.random.words(100),
+    markdown: enforceStringRange(80, 10000)(faker.random.words(100)),
+    subject: enforceStringRange(10, 120)(faker.random.words(100)),
   } as MessageContent;
 };
 
