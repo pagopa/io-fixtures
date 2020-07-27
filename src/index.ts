@@ -429,6 +429,7 @@ createDatabase(cosmosDbName)
   .then(() => createCollection("notifications", "messageId"))
   .then(() => createCollection("profiles", "fiscalCode"))
   .then(() => createCollection("services", "serviceId"))
+  .then(() => createCollection("user-data-processing", "fiscalCode"))
 
   .then(() => createCollection("bonus-activations", "id"))
   .then(() => createCollection("bonus-leases", "id"))
