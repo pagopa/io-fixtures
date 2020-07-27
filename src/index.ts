@@ -50,11 +50,16 @@ import * as ulid from "ulid";
 import * as faker from "faker";
 import * as randomstring from "randomstring";
 
+import { NonEmptyString } from "italia-ts-commons/lib/strings";
 import { FiscalCode } from "io-functions-commons/dist/generated/definitions/FiscalCode";
 import { MessageStatusValueEnum } from "io-functions-commons/dist/generated/definitions/MessageStatusValue";
 import { NotificationChannelStatusValueEnum } from "io-functions-commons/dist/generated/definitions/NotificationChannelStatusValue";
 
-import { createBlobService } from "azure-storage";
+import {
+  createBlobService,
+  createQueueService,
+  createTableService,
+} from "azure-storage";
 import { MessageContent } from "io-functions-commons/dist/generated/definitions/MessageContent";
 
 const cosmosDbKey = getRequiredStringEnv("COSMOSDB_KEY");
@@ -71,6 +76,8 @@ const storageConnectionString = getRequiredStringEnv(
   "STORAGE_CONNECTION_STRING"
 );
 const blobService = createBlobService(storageConnectionString);
+const queueService = createQueueService(storageConnectionString);
+const tableService = createTableService(storageConnectionString);
 
 /**
  * Generate a fake fiscal code.
@@ -293,8 +300,8 @@ const getNotificationStatusFixture = (
     );
   });
 
-const generateServiceFixtures = async () => {
-  const aService = getServiceFixture();
+const generateServiceFixtures = async (s?: Partial<Service>) => {
+  const aService = getServiceFixture(s);
   const errorOrService = await serviceModel.create(
     aService,
     aService.serviceId
@@ -312,8 +319,8 @@ const generateServiceFixtures = async () => {
 
 const generateMessageContentFixture = () => {
   return {
-    markdown: faker.random.words(10),
-    subject: faker.random.words(100),
+    markdown: faker.lorem.words(100),
+    subject: faker.lorem.words(5),
   } as MessageContent;
 };
 
@@ -391,6 +398,30 @@ const generateUserMessageFixtures = async () => {
   }
 };
 
+const createContainer = (containerName: string) =>
+  new Promise((resolve) =>
+    blobService.createContainerIfNotExists(containerName, (err) =>
+      // tslint:disable-next-line: no-use-of-empty-return-value no-console
+      err ? resolve(console.error(err)) : resolve()
+    )
+  );
+
+const createQueue = (queueName: string) =>
+  new Promise((resolve) =>
+    queueService.createQueueIfNotExists(queueName, (err) =>
+      // tslint:disable-next-line: no-use-of-empty-return-value no-console
+      err ? resolve(console.error(err)) : resolve()
+    )
+  );
+
+const createTable = (tableName: string) =>
+  new Promise((resolve) =>
+    tableService.createTableIfNotExists(tableName, (err) =>
+      // tslint:disable-next-line: no-use-of-empty-return-value no-console
+      err ? resolve(console.error(err)) : resolve()
+    )
+  );
+
 createDatabase(cosmosDbName)
   .then(() => createCollection("message-status", "messageId"))
   .then(() => createCollection("messages", "fiscalCode"))
@@ -399,17 +430,46 @@ createDatabase(cosmosDbName)
   .then(() => createCollection("profiles", "fiscalCode"))
   .then(() => createCollection("services", "serviceId"))
 
-  .then(() => generateServiceFixtures())
+  .then(() => createCollection("bonus-activations", "id"))
+  .then(() => createCollection("bonus-leases", "id"))
+  .then(() => createCollection("bonus-processing", "id"))
+  .then(() => createCollection("eligibility-checks", "id"))
+  .then(() => createCollection("user-bonuses", "id"))
 
-  .then(
-    () =>
-      new Promise((resolve) =>
-        blobService.createContainerIfNotExists("message-content", (err) =>
-          // tslint:disable-next-line: no-use-of-empty-return-value no-console
-          err ? resolve(console.error(err)) : resolve()
-        )
-      )
+  .then(() =>
+    NonEmptyString.decode(process.env.REQ_SERVICE_ID).fold(
+      () => generateServiceFixtures(),
+      (serviceId) => generateServiceFixtures({ serviceId })
+    )
   )
+
+  .then(() => createContainer("spidassertions"))
+
+  .then(() => createContainer("cached"))
+  .then(() => createContainer("message-content"))
+
+  .then(() => createContainer("user-data-download"))
+  .then(() => createContainer("user-data-backup"))
+
+  .then(() => createContainer("$web"))
+  .then(() => createContainer("services"))
+
+  .then(() => createQueue("spidmsgitems"))
+
+  .then(() => createQueue("push-notifications"))
+
+  .then(() => createQueue("bonusactivations"))
+  .then(() => createQueue("redeemed-bonuses"))
+
+  .then(() => createTable("SubscriptionsFeedByDay"))
+  .then(() => createTable("ValidationTokens"))
+
+  .then(() => createTable("adelogs"))
+  .then(() => createTable("inpslogs"))
+  .then(() => createTable("bonusactivations"))
+  .then(() => createTable("bonusleasebindings"))
+  .then(() => createTable("eligibilitychecks"))
+  .then(() => createTable("redeemederrors"))
 
   .then(() => generateUserMessageFixtures())
 
