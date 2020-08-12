@@ -435,7 +435,7 @@ createDatabase(cosmosDbName)
   .then(() => createCollection("bonus-leases", "id"))
   .then(() => createCollection("bonus-processing", "id"))
   .then(() => createCollection("eligibility-checks", "id"))
-  .then(() => createCollection("user-bonuses", "id"))
+  .then(() => createCollection("user-bonuses", "fiscalCode"))
 
   .then(() =>
     NonEmptyString.decode(process.env.REQ_SERVICE_ID).fold(
