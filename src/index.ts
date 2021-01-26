@@ -399,7 +399,7 @@ const generateUserMessageFixtures = async () => {
 };
 
 const createContainer = (containerName: string) =>
-  new Promise((resolve) =>
+  new Promise<void>((resolve) =>
     blobService.createContainerIfNotExists(containerName, (err) =>
       // tslint:disable-next-line: no-use-of-empty-return-value no-console
       err ? resolve(console.error(err)) : resolve()
@@ -407,7 +407,7 @@ const createContainer = (containerName: string) =>
   );
 
 const createQueue = (queueName: string) =>
-  new Promise((resolve) =>
+  new Promise<void>((resolve) =>
     queueService.createQueueIfNotExists(queueName, (err) =>
       // tslint:disable-next-line: no-use-of-empty-return-value no-console
       err ? resolve(console.error(err)) : resolve()
@@ -415,7 +415,7 @@ const createQueue = (queueName: string) =>
   );
 
 const createTable = (tableName: string) =>
-  new Promise((resolve) =>
+  new Promise<void>((resolve) =>
     tableService.createTableIfNotExists(tableName, (err) =>
       // tslint:disable-next-line: no-use-of-empty-return-value no-console
       err ? resolve(console.error(err)) : resolve()
@@ -436,6 +436,8 @@ createDatabase(cosmosDbName)
   .then(() => createCollection("bonus-processing", "id"))
   .then(() => createCollection("eligibility-checks", "id"))
   .then(() => createCollection("user-bonuses", "fiscalCode"))
+
+  .then(() => createCollection("user-cgns", "fiscalCode"))
 
   .then(() =>
     NonEmptyString.decode(process.env.REQ_SERVICE_ID).fold(
@@ -471,6 +473,9 @@ createDatabase(cosmosDbName)
   .then(() => createTable("bonusleasebindings"))
   .then(() => createTable("eligibilitychecks"))
   .then(() => createTable("redeemederrors"))
+
+  .then(() => createTable("cgnleasebindings"))
+  .then(() => createTable("cgnexpirations"))
 
   .then(() => generateUserMessageFixtures())
 
