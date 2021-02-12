@@ -438,6 +438,7 @@ createDatabase(cosmosDbName)
   .then(() => createCollection("user-bonuses", "fiscalCode"))
 
   .then(() => createCollection("user-cgns", "fiscalCode"))
+  .then(() => createCollection("user-eyca-cards", "fiscalCode"))
 
   .then(() =>
     NonEmptyString.decode(process.env.REQ_SERVICE_ID).fold(
@@ -476,6 +477,7 @@ createDatabase(cosmosDbName)
 
   .then(() => createTable("cgnleasebindings"))
   .then(() => createTable("cgnexpirations"))
+  .then(() => createQueue("eycaactivations"))
 
   .then(() => generateUserMessageFixtures())
 
