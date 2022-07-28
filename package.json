@@ -4,20 +4,17 @@
     "start": "ts-node src/index.ts"
   },
   "dependencies": {
-    "azure-storage": "^2.10.3",
+    "@azure/cosmos": "^3.16.3",
+    "@pagopa/io-functions-commons": "^25.5.2",
+    "@pagopa/ts-commons": "^10.8.0",
+    "azure-storage": "^2.10.7",
     "documentdb": "^1.15.3",
     "dotenv": "^8.2.0",
     "faker": "^4.1.0",
-    "fp-ts": "1.17.4",
-    "io-functions-commons": "^9.0.0",
-    "io-ts": "1.8.5",
-    "italia-ts-commons": "^8.1.0",
+    "fp-ts": "^2",
+    "io-ts": "^2",
     "randomstring": "^1.1.5",
     "ulid": "^2.3.0"
-  },
-  "resolutions": {
-    "fp-ts": "1.17.4",
-    "io-ts": "1.8.5"
   },
   "devDependencies": {
     "@types/documentdb": "^1.10.5",
