@@ -5,11 +5,8 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import { promisify } from "util";
-import { traverse } from "fp-ts/lib/Array";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as E from "fp-ts/lib/Either";
-import { Either, left, right } from "fp-ts/lib/Either";
 import {
   PROFILE_COLLECTION_NAME,
   ProfileModel,
@@ -44,9 +41,7 @@ import {
   NotificationStatus,
   NewNotificationStatus,
 } from "@pagopa/io-functions-commons/dist/src/models/notification_status";
-// import * as documentDbUtils from "@pagopa/io-functions-commons/dist/src/utils/documentdb";
 import { getRequiredStringEnv } from "@pagopa/io-functions-commons/dist/src/utils/env";
-// import { toString } from "fp-ts/lib/function";
 import * as PR from "io-ts/PathReporter";
 
 import * as ulid from "ulid";
@@ -58,12 +53,11 @@ import { FiscalCode } from "@pagopa/io-functions-commons/dist/generated/definiti
 import { MessageStatusValueEnum } from "@pagopa/io-functions-commons/dist/generated/definitions/MessageStatusValue";
 import { NotificationChannelStatusValueEnum } from "@pagopa/io-functions-commons/dist/generated/definitions/NotificationChannelStatusValue";
 
-import {
-  createBlobService,
-  createQueueService,
-  createTableService,
-} from "azure-storage";
-import { CosmosClient, DatabaseResponse, Container, ContainerResponse } from "@azure/cosmos";
+import { BlobServiceClient, ContainerCreateIfNotExistsResponse } from "@azure/storage-blob";
+import { QueueServiceClient, QueueCreateIfNotExistsResponse } from "@azure/storage-queue";
+import { TableServiceClient } from "@azure/data-tables";
+import { createBlobService } from "azure-storage";
+import { CosmosClient, DatabaseResponse, ContainerResponse } from "@azure/cosmos";
 import { pipe } from "fp-ts/lib/function";
 import { NewMessageContent } from "@pagopa/io-functions-commons/dist/generated/definitions/NewMessageContent";
 
@@ -81,9 +75,10 @@ const dbInstance = dbClient.database(cosmosDbName);
 const storageConnectionString = getRequiredStringEnv(
   "STORAGE_CONNECTION_STRING"
 );
-const blobService = createBlobService(storageConnectionString);
-const queueService = createQueueService(storageConnectionString);
-const tableService = createTableService(storageConnectionString);
+
+const blobService = BlobServiceClient.fromConnectionString(storageConnectionString);
+const queueService = QueueServiceClient.fromConnectionString(storageConnectionString);
+const tableService = TableServiceClient.fromConnectionString(storageConnectionString);
 
 /**
  * Generate a fake fiscal code.
@@ -118,32 +113,6 @@ const createCollection = (collectionName: string, partitionKey: string): TE.Task
     () => dbInstance.containers.createIfNotExists({ id: collectionName, partitionKey: { paths: [`/${partitionKey}`] } }),
     () => new Error(`Cannot create ${collectionName} collection`)
   )
-
-// function createCollection(
-//   collectionName: string,
-//   partitionKey: string
-// ): Promise<Either<Error, CollectionMeta>> {
-//   return new Promise((resolve) => {
-//     const dbUri = UriFactory.createDatabaseUri(cosmosDbName);
-//     documentClient.createCollection(
-//       dbUri,
-//       {
-//         id: collectionName,
-//         partitionKey: {
-//           kind: "Hash",
-//           paths: [`/${partitionKey}`],
-//         },
-//       },
-//       (err, ret) => {
-//         if (err) {
-//           return resolve(left<Error, CollectionMeta>(new Error(err.body)));
-//         }
-//         resolve(right<Error, CollectionMeta>(ret));
-//       }
-//     );
-//   });
-// }
-
 
 const serviceCollection = dbInstance.container(SERVICE_COLLECTION_NAME);
 const serviceModel = new ServiceModel(serviceCollection);
@@ -330,6 +299,11 @@ const generateMessageContentFixture = (): NewMessageContent => {
   )
 };
 
+/**
+  * @deprecated
+*/
+const createOldBlobService = (storageConnectionString: string) => createBlobService(storageConnectionString);
+
 const generateMessageFixtures = async (fiscalCode: FiscalCode) => {
   const aMessage = getMessageFixture({
     fiscalCode
@@ -338,8 +312,12 @@ const generateMessageFixtures = async (fiscalCode: FiscalCode) => {
   await pipe(
     messageModel.create(aMessage),
     TE.chainW(() => {
+      /*
+        NOTICE: io-functions-commons is using a deprecated version for the blob storage.
+                here i will use the deprecated library client just to let it works
+      */
       return messageModel.storeContentAsBlob(
-        blobService,
+        createOldBlobService(storageConnectionString),
         aMessage.id,
         generateMessageContentFixture()
       )
@@ -372,14 +350,14 @@ const generateMessageFixtures = async (fiscalCode: FiscalCode) => {
 
 const generateUserFixtures = async () => {
   const aProfile = getProfileFixture();
-  return await pipe(
+  await pipe(
     profileModel.create(aProfile),
     TE.mapLeft(() => {
       throw new Error("Cannot create profile");
     }),
-    TE.map(profile => profile.fiscalCode),
-    TE.toUnion,
   )()
+
+  return aProfile.fiscalCode;
 };
 
 const generateUserMessageFixtures = async () => {
@@ -391,21 +369,22 @@ const generateUserMessageFixtures = async () => {
   }
 };
 
-const createContainer = (containerName: string): TE.TaskEither<Error, void> =>
+const createContainer = (containerName: string): TE.TaskEither<Error, ContainerCreateIfNotExistsResponse> =>
   TE.tryCatch(
-    () => promisify<string>(blobService.createContainerIfNotExists)(containerName),
+    () => blobService.getContainerClient(containerName).createIfNotExists(),
     () => new Error("Could not create container")
   )
 
-const createQueue = (queueName: string): TE.TaskEither<Error, void> =>
+const createQueue = (queueName: string): TE.TaskEither<Error, QueueCreateIfNotExistsResponse> =>
   TE.tryCatch(
-    () => promisify<string>(queueService.createQueueIfNotExists)(queueName),
+    () => queueService.getQueueClient(queueName).createIfNotExists(),
     () => new Error("Could not create queue")
   )
 
+// TODO: search if createTable method rejects if the table already exists
 const createTable = (tableName: string): TE.TaskEither<Error, void> =>
   TE.tryCatch(
-    () => promisify<string>(tableService.createTableIfNotExists)(tableName),
+    () => tableService.createTable(tableName),
     () => new Error("Could not create table")
   )
 
@@ -443,11 +422,10 @@ const containerOperationsArray = [
 
 const queueOperationsArray = [
   createQueue("spidmsgitems"),
-
   createQueue("push-notifications"),
-
   createQueue("bonusactivations"),
   createQueue("redeemed-bonuses"),
+  createQueue("eycaactivations"),
 ]
 
 const tableOperationsArray = [
@@ -463,7 +441,6 @@ const tableOperationsArray = [
 
   createTable("cgnleasebindings"),
   createTable("cgnexpirations"),
-  createQueue("eycaactivations"),
 ]
 
 //MAIN PIPE
