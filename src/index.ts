@@ -343,9 +343,9 @@ const generateMessageFixtures = async (fiscalCode: FiscalCode) => {
     fiscalCode
   });
 
-  pipe(
+  await pipe(
     messageModel.create(aMessage),
-    TE.chainW(_ => {
+    TE.chainW(() => {
       return messageModel.storeContentAsBlob(
         blobService,
         aMessage.id,
@@ -372,8 +372,8 @@ const generateMessageFixtures = async (fiscalCode: FiscalCode) => {
     TE.mapLeft((err) => {
       throw new Error("Cannot create new notification status" + err);
     }),
-    TE.chainW(({ createdNotificationStatus }) => notificationStatusModel.update(createdNotificationStatus)),
-  )
+    TE.chainFirstW(({ createdNotificationStatus }) => notificationStatusModel.update(createdNotificationStatus))
+  )()
 
   return aMessage.id
 
