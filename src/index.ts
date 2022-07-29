@@ -5,20 +5,16 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
+import { promisify } from "util";
+import { traverse } from "fp-ts/lib/Array";
 import * as TE from "fp-ts/lib/TaskEither";
-import * as t from "io-ts";
-import { wrapWithKind } from "@pagopa/io-functions-commons/dist/src/utils/types";
 import * as E from "fp-ts/lib/Either";
-import {
-  CollectionMeta,
-  DocumentClient as DocumentDBClient,
-  UriFactory,
-} from "documentdb";
 import { Either, left, right } from "fp-ts/lib/Either";
 import {
   PROFILE_COLLECTION_NAME,
   ProfileModel,
   Profile,
+  NewProfile,
 } from "@pagopa/io-functions-commons/dist/src/models/profile";
 import {
   SERVICE_COLLECTION_NAME,
@@ -57,7 +53,7 @@ import * as ulid from "ulid";
 import * as faker from "faker";
 import * as randomstring from "randomstring";
 
-import { IWithinRangeStringTag, NonEmptyString } from "@pagopa/ts-commons/lib/strings";
+import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import { FiscalCode } from "@pagopa/io-functions-commons/dist/generated/definitions/FiscalCode";
 import { MessageStatusValueEnum } from "@pagopa/io-functions-commons/dist/generated/definitions/MessageStatusValue";
 import { NotificationChannelStatusValueEnum } from "@pagopa/io-functions-commons/dist/generated/definitions/NotificationChannelStatusValue";
@@ -67,11 +63,8 @@ import {
   createQueueService,
   createTableService,
 } from "azure-storage";
-import { MessageContent } from "@pagopa/io-functions-commons/dist/generated/definitions/MessageContent";
-import { CosmosClient } from "@azure/cosmos";
+import { CosmosClient, DatabaseResponse, Container, ContainerResponse } from "@azure/cosmos";
 import { pipe } from "fp-ts/lib/function";
-import { CosmosdbModelVersioned } from "@pagopa/io-functions-commons/dist/src/utils/cosmosdb_model_versioned";
-import { BaseModel } from "@pagopa/io-functions-commons/dist/src/utils/cosmosdb_model";
 import { NewMessageContent } from "@pagopa/io-functions-commons/dist/generated/definitions/NewMessageContent";
 
 const cosmosDbKey = getRequiredStringEnv("COSMOSDB_KEY");
@@ -84,10 +77,6 @@ const dbClient = new CosmosClient({
 })
 
 const dbInstance = dbClient.database(cosmosDbName);
-
-const documentClient = new DocumentDBClient(cosmosDbUri, {
-  masterKey: cosmosDbKey,
-});
 
 const storageConnectionString = getRequiredStringEnv(
   "STORAGE_CONNECTION_STRING"
@@ -116,41 +105,44 @@ function generateFakeFiscalCode(): FiscalCode {
   ) as FiscalCode;
 }
 
-function createDatabase(databaseName: string): Promise<Either<Error, void>> {
-  return new Promise((resolve) => {
-    documentClient.createDatabase({ id: databaseName }, (err, _) => {
-      if (err) {
-        return resolve(left<Error, void>(new Error(err.body)));
-      }
-      resolve(right<Error, void>(void 0));
-    });
-  });
-}
+const createDatabase = (databaseName: string): TE.TaskEither<Error, DatabaseResponse> =>
+  TE.tryCatch(
+    () =>
+      dbClient.databases.createIfNotExists({ id: databaseName }),
+    () =>
+      new Error(`Cannot create database ${databaseName}`)
+  )
 
-function createCollection(
-  collectionName: string,
-  partitionKey: string
-): Promise<Either<Error, CollectionMeta>> {
-  return new Promise((resolve) => {
-    const dbUri = UriFactory.createDatabaseUri(cosmosDbName);
-    documentClient.createCollection(
-      dbUri,
-      {
-        id: collectionName,
-        partitionKey: {
-          kind: "Hash",
-          paths: [`/${partitionKey}`],
-        },
-      },
-      (err, ret) => {
-        if (err) {
-          return resolve(left<Error, CollectionMeta>(new Error(err.body)));
-        }
-        resolve(right<Error, CollectionMeta>(ret));
-      }
-    );
-  });
-}
+const createCollection = (collectionName: string, partitionKey: string): TE.TaskEither<Error, ContainerResponse> =>
+  TE.tryCatch(
+    () => dbInstance.containers.createIfNotExists({ id: collectionName, partitionKey: { paths: [`/${partitionKey}`] } }),
+    () => new Error(`Cannot create ${collectionName} collection`)
+  )
+
+// function createCollection(
+//   collectionName: string,
+//   partitionKey: string
+// ): Promise<Either<Error, CollectionMeta>> {
+//   return new Promise((resolve) => {
+//     const dbUri = UriFactory.createDatabaseUri(cosmosDbName);
+//     documentClient.createCollection(
+//       dbUri,
+//       {
+//         id: collectionName,
+//         partitionKey: {
+//           kind: "Hash",
+//           paths: [`/${partitionKey}`],
+//         },
+//       },
+//       (err, ret) => {
+//         if (err) {
+//           return resolve(left<Error, CollectionMeta>(new Error(err.body)));
+//         }
+//         resolve(right<Error, CollectionMeta>(ret));
+//       }
+//     );
+//   });
+// }
 
 
 const serviceCollection = dbInstance.container(SERVICE_COLLECTION_NAME);
@@ -181,8 +173,8 @@ const getServiceFixture = (s?: Partial<Service>): NewService =>
 const profilesCollection = dbInstance.container(PROFILE_COLLECTION_NAME)
 const profileModel = new ProfileModel(profilesCollection);
 
-const getProfileFixture = (p?: Partial<Profile>): Profile =>
-  pipe(Profile.decode({
+const getProfileFixture = (p?: Partial<Profile>): NewProfile =>
+  pipe(NewProfile.decode({
     acceptedTosVersion: faker.random.number(2),
     email: faker.internet.exampleEmail(),
     fiscalCode: generateFakeFiscalCode(),
@@ -376,70 +368,18 @@ const generateMessageFixtures = async (fiscalCode: FiscalCode) => {
   )()
 
   return aMessage.id
-
-  // ------------------------
-  // OLD CODE
-  // ------------------------
-
-  // await messageModel.create(aMessage, aMessage.fiscalCode);
-  // await messageModel.storeContentAsBlob(
-  //   blobService,
-  //   aMessage.id,
-  //   generateMessageContentFixture()
-  // );
-
-  // const aMessageStatus = getMessageStatusFixture({
-  //   messageId: aMessage.id,
-  // });
-  // const errorOrMessageStatus = await messageStatusModel.create(
-  //   aMessageStatus,
-  //   aMessageStatus.messageId
-  // );
-
-  // const createdMessageStatus = errorOrMessageStatus.getOrElseL(() => {
-  //   throw new Error("cannot create new message status");
-  // });
-  // // create a new version
-  // await messageStatusModel.update(
-  //   createdMessageStatus.id,
-  //   createdMessageStatus.messageId,
-  //   () => createdMessageStatus
-  // );
-
-  // const aNotification = getNotificationFixture({
-  //   messageId: aMessage.id,
-  //   fiscalCode: aMessage.fiscalCode,
-  // });
-  // await notificationModel.create(aNotification, aNotification.messageId);
-
-  // const aNotificationStatus = getNotificationStatusFixture({
-  //   messageId: aMessage.id,
-  //   notificationId: aNotification.id,
-  // });
-  // const errorOrNotifcationStatus = await notificationStatusModel.create(
-  //   aNotificationStatus,
-  //   aNotificationStatus.notificationId
-  // );
-
-  // const createdNotificationStatus = errorOrNotifcationStatus.getOrElseL(
-  //   (err) => {
-  //     throw new Error("cannot create new notification status:" + toString(err));
-  //   }
-  // );
-  // create a new version
-  // await notificationStatusModel.update(
-  //   createdNotificationStatus.id,
-  //   createdNotificationStatus.notificationId,
-  //   () => createdNotificationStatus
-  // );
-
-  // return aMessage.id;
 };
 
 const generateUserFixtures = async () => {
   const aProfile = getProfileFixture();
-  await profileModel.create(aProfile, aProfile.fiscalCode);
-  return aProfile.fiscalCode;
+  return await pipe(
+    profileModel.create(aProfile),
+    TE.mapLeft(() => {
+      throw new Error("Cannot create profile");
+    }),
+    TE.map(profile => profile.fiscalCode),
+    TE.toUnion,
+  )()
 };
 
 const generateUserMessageFixtures = async () => {
@@ -451,95 +391,100 @@ const generateUserMessageFixtures = async () => {
   }
 };
 
-const createContainer = (containerName: string) =>
-  new Promise<void>((resolve) =>
-    blobService.createContainerIfNotExists(containerName, (err) =>
-      // tslint:disable-next-line: no-use-of-empty-return-value no-console
-      err ? resolve(console.error(err)) : resolve()
-    )
-  );
-
-const createQueue = (queueName: string) =>
-  new Promise<void>((resolve) =>
-    queueService.createQueueIfNotExists(queueName, (err) =>
-      // tslint:disable-next-line: no-use-of-empty-return-value no-console
-      err ? resolve(console.error(err)) : resolve()
-    )
-  );
-
-const createTable = (tableName: string) =>
-  new Promise<void>((resolve) =>
-    tableService.createTableIfNotExists(tableName, (err) =>
-      // tslint:disable-next-line: no-use-of-empty-return-value no-console
-      err ? resolve(console.error(err)) : resolve()
-    )
-  );
-
-createDatabase(cosmosDbName)
-  .then(() => createCollection("message-status", "messageId"))
-  .then(() => createCollection("messages", "fiscalCode"))
-  .then(() => createCollection("notification-status", "notificationId"))
-  .then(() => createCollection("notifications", "messageId"))
-  .then(() => createCollection("profiles", "fiscalCode"))
-  .then(() => createCollection("services", "serviceId"))
-  .then(() => createCollection("user-data-processing", "fiscalCode"))
-
-  .then(() => createCollection("bonus-activations", "id"))
-  .then(() => createCollection("bonus-leases", "id"))
-  .then(() => createCollection("bonus-processing", "id"))
-  .then(() => createCollection("eligibility-checks", "id"))
-  .then(() => createCollection("user-bonuses", "fiscalCode"))
-
-  .then(() => createCollection("user-cgns", "fiscalCode"))
-  .then(() => createCollection("user-eyca-cards", "fiscalCode"))
-
-  .then(() =>
-    NonEmptyString.decode(process.env.REQ_SERVICE_ID).fold(
-      () => generateServiceFixtures(),
-      (serviceId) => generateServiceFixtures({ serviceId })
-    )
-  )
-  //generate special service
-  .then(() =>
-    NonEmptyString.decode(process.env.REQ_SPECIAL_SERVICE_ID).fold(
-      () => generateServiceFixtures(),
-      (serviceId) => generateServiceFixtures({ serviceId })
-    )
+const createContainer = (containerName: string): TE.TaskEither<Error, void> =>
+  TE.tryCatch(
+    () => promisify<string>(blobService.createContainerIfNotExists)(containerName),
+    () => new Error("Could not create container")
   )
 
-  .then(() => createContainer("spidassertions"))
+const createQueue = (queueName: string): TE.TaskEither<Error, void> =>
+  TE.tryCatch(
+    () => promisify<string>(queueService.createQueueIfNotExists)(queueName),
+    () => new Error("Could not create queue")
+  )
 
-  .then(() => createContainer("cached"))
-  .then(() => createContainer("message-content"))
+const createTable = (tableName: string): TE.TaskEither<Error, void> =>
+  TE.tryCatch(
+    () => promisify<string>(tableService.createTableIfNotExists)(tableName),
+    () => new Error("Could not create table")
+  )
 
-  .then(() => createContainer("user-data-download"))
-  .then(() => createContainer("user-data-backup"))
+const collectionOperationsArray = [
+  createCollection("message-status", "messageId"),
+  createCollection("messages", "fiscalCode"),
+  createCollection("notification-status", "notificationId"),
+  createCollection("notifications", "messageId"),
+  createCollection("profiles", "fiscalCode"),
+  createCollection("services", "serviceId"),
+  createCollection("user-data-processing", "fiscalCode"),
 
-  .then(() => createContainer("$web"))
-  .then(() => createContainer("services"))
+  createCollection("bonus-activations", "id"),
+  createCollection("bonus-leases", "id"),
+  createCollection("bonus-processing", "id"),
+  createCollection("eligibility-checks", "id"),
+  createCollection("user-bonuses", "fiscalCode"),
 
-  .then(() => createQueue("spidmsgitems"))
+  createCollection("user-cgns", "fiscalCode"),
+  createCollection("user-eyca-cards", "fiscalCode"),
+]
 
-  .then(() => createQueue("push-notifications"))
+const containerOperationsArray = [
+  createContainer("spidassertions"),
 
-  .then(() => createQueue("bonusactivations"))
-  .then(() => createQueue("redeemed-bonuses"))
+  createContainer("cached"),
+  createContainer("message-content"),
 
-  .then(() => createTable("SubscriptionsFeedByDay"))
-  .then(() => createTable("ValidationTokens"))
+  createContainer("user-data-download"),
+  createContainer("user-data-backup"),
 
-  .then(() => createTable("adelogs"))
-  .then(() => createTable("inpslogs"))
-  .then(() => createTable("bonusactivations"))
-  .then(() => createTable("bonusleasebindings"))
-  .then(() => createTable("eligibilitychecks"))
-  .then(() => createTable("redeemederrors"))
+  createContainer("$web"),
+  createContainer("services"),
+]
 
-  .then(() => createTable("cgnleasebindings"))
-  .then(() => createTable("cgnexpirations"))
-  .then(() => createQueue("eycaactivations"))
+const queueOperationsArray = [
+  createQueue("spidmsgitems"),
 
-  .then(() => generateUserMessageFixtures())
+  createQueue("push-notifications"),
 
-  // tslint:disable-next-line: no-console
-  .catch(console.error);
+  createQueue("bonusactivations"),
+  createQueue("redeemed-bonuses"),
+]
+
+const tableOperationsArray = [
+  createTable("SubscriptionsFeedByDay"),
+  createTable("ValidationTokens"),
+
+  createTable("adelogs"),
+  createTable("inpslogs"),
+  createTable("bonusactivations"),
+  createTable("bonusleasebindings"),
+  createTable("eligibilitychecks"),
+  createTable("redeemederrors"),
+
+  createTable("cgnleasebindings"),
+  createTable("cgnexpirations"),
+  createQueue("eycaactivations"),
+]
+
+//MAIN PIPE
+pipe(
+  createDatabase(cosmosDbName),
+  TE.chain(() => TE.sequenceArray(collectionOperationsArray)),
+  TE.map(() =>
+    pipe(
+      NonEmptyString.decode(process.env.REQ_SERVICE_ID),
+      E.fold(
+        () => generateServiceFixtures(),
+        (serviceId) => generateServiceFixtures({ serviceId })
+      )
+    )
+  ),
+  TE.chain(() => TE.sequenceArray(containerOperationsArray)),
+  TE.chain(() => TE.sequenceArray(queueOperationsArray)),
+  TE.chain(() => TE.sequenceArray(tableOperationsArray)),
+  TE.mapLeft((err) => {
+    // tslint:disable-next-line: no-console
+    console.error(err)
+  }),
+  TE.fold(() => process.exit(1), () => generateUserMessageFixtures),
+)()

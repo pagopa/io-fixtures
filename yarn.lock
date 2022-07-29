@@ -169,13 +169,6 @@
   resolved "https://registry.yarnpkg.com/@types/caseless/-/caseless-0.12.2.tgz#f65d3d6389e01eeb458bd54dc8f52b95a9463bc8"
   integrity sha512-6ckxMjBBD8URvjB6J3NcnuAn5Pkl7t3TizAg+xdlzzQGSPSmBcXf8KoIH0ua/i+tio+ZRUHEXp0HEmvaR4kt0w==
 
-"@types/documentdb@^1.10.5":
-  version "1.10.6"
-  resolved "https://registry.yarnpkg.com/@types/documentdb/-/documentdb-1.10.6.tgz#156c15d720e6871de06371c96d93c7b57ee1b627"
-  integrity sha512-OHYaRvBlJL2rl75MeSilgwOUmwtsr39pYQZYG6lmPI5MJveqFQHi9RiaKJ20z5cQT6uAwTR/BZLRCKP9F2bg/g==
-  dependencies:
-    "@types/node" "*"
-
 "@types/faker@^4.1.11":
   version "4.1.12"
   resolved "https://registry.yarnpkg.com/@types/faker/-/faker-4.1.12.tgz#065d37343677df1aa757c622650bd14666c42602"
@@ -368,16 +361,6 @@ bcrypt-pbkdf@^1.0.0:
   integrity sha1-pDAdOJtqQ/m2f/PKEaP2Y342Dp4=
   dependencies:
     tweetnacl "^0.14.3"
-
-big-integer@^1.6.25:
-  version "1.6.48"
-  resolved "https://registry.yarnpkg.com/big-integer/-/big-integer-1.6.48.tgz#8fd88bd1632cba4a1c8c3e3d7159f08bb95b4b9e"
-  integrity sha512-j51egjPa7/i+RdiRuJbPdJ2FIUYYPhvYLjzoYbcMMm62ooO6F94fETG4MTs46zPAF9Brs04OajboA/qTGuz78w==
-
-binary-search-bounds@2.0.3:
-  version "2.0.3"
-  resolved "https://registry.yarnpkg.com/binary-search-bounds/-/binary-search-bounds-2.0.3.tgz#5ff8616d6dd2ca5388bc85b2d6266e2b9da502dc"
-  integrity sha1-X/hhbW3SylOIvIWy1iZuK52lAtw=
 
 bowser@2.9.0:
   version "2.9.0"
@@ -644,20 +627,6 @@ doctrine@0.7.2:
   dependencies:
     esutils "^1.1.6"
     isarray "0.0.1"
-
-documentdb@^1.15.3:
-  version "1.15.3"
-  resolved "https://registry.yarnpkg.com/documentdb/-/documentdb-1.15.3.tgz#ce83a248515667054d45009ff94c4a1e5f72067b"
-  integrity sha512-V+B0D1arcWVT3uv/Nms2aNNeJBgndysDcXfyOFgz2dlMCmY8cWMFXFuo+6T4A8PjLL2pI9QSoo4CwXQBREFcnA==
-  dependencies:
-    big-integer "^1.6.25"
-    binary-search-bounds "2.0.3"
-    debug "^4.1.0"
-    int64-buffer "^0.1.9"
-    priorityqueuejs "1.0.0"
-    semaphore "1.0.5"
-    tunnel "0.0.5"
-    underscore "1.8.3"
 
 dotenv@^8.2.0:
   version "8.2.0"
@@ -971,11 +940,6 @@ inherits@~2.0.3:
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.3.tgz#633c2c83e3da42a502f52466022480f4208261de"
   integrity sha1-Yzwsg+PaQqUC9SRmAiSA9CCCYd4=
-
-int64-buffer@^0.1.9:
-  version "0.1.10"
-  resolved "https://registry.yarnpkg.com/int64-buffer/-/int64-buffer-0.1.10.tgz#277b228a87d95ad777d07c13832022406a473423"
-  integrity sha1-J3siiofZWtd30HwTgyAiQGpHNCM=
 
 io-ts@^2, io-ts@^2.2.16:
   version "2.2.17"
@@ -1356,7 +1320,7 @@ prettier@^2.0.5:
   resolved "https://registry.yarnpkg.com/prettier/-/prettier-2.0.5.tgz#d6d56282455243f2f92cc1716692c08aa31522d4"
   integrity sha512-7PtVymN48hGcO4fGjybyBSIWDsLU4H4XlvOHfq91pz9kkGlonzwTfYkaIEwiRg/dAJF9YlbsduBAgtYLi+8cFg==
 
-priorityqueuejs@1.0.0, priorityqueuejs@^1.0.0:
+priorityqueuejs@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/priorityqueuejs/-/priorityqueuejs-1.0.0.tgz#2ee4f23c2560913e08c07ce5ccdd6de3df2c5af8"
   integrity sha1-LuTyPCVgkT4IwHzlzN1t498sWvg=
@@ -1527,11 +1491,6 @@ sax@0.5.x:
   version "0.5.8"
   resolved "https://registry.yarnpkg.com/sax/-/sax-0.5.8.tgz#d472db228eb331c2506b0e8c15524adb939d12c1"
   integrity sha1-1HLbIo6zMcJQaw6MFVJK25OdEsE=
-
-semaphore@1.0.5:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/semaphore/-/semaphore-1.0.5.tgz#b492576e66af193db95d65e25ec53f5f19798d60"
-  integrity sha1-tJJXbmavGT25XWXiXsU/Xxl5jWA=
 
 semaphore@^1.0.5:
   version "1.1.0"
@@ -1806,11 +1765,6 @@ tunnel-agent@^0.6.0:
   dependencies:
     safe-buffer "^5.0.1"
 
-tunnel@0.0.5:
-  version "0.0.5"
-  resolved "https://registry.yarnpkg.com/tunnel/-/tunnel-0.0.5.tgz#d1532254749ed36620fcd1010865495a1fa9d0ae"
-  integrity sha512-gj5sdqherx4VZKMcBA4vewER7zdK25Td+z1npBqpbDys4eJrLx+SlYjJvq1bDXs2irkuJM5pf8ktaEQVipkrbA==
-
 tweetnacl@^0.14.3, tweetnacl@~0.14.0:
   version "0.14.5"
   resolved "https://registry.yarnpkg.com/tweetnacl/-/tweetnacl-0.14.5.tgz#5ae68177f192d4456269d108afa93ff8743f4f64"
@@ -1833,11 +1787,6 @@ ulid@^2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/ulid/-/ulid-2.3.0.tgz#93063522771a9774121a84d126ecd3eb9804071f"
   integrity sha512-keqHubrlpvT6G2wH0OEfSW4mquYRcbe/J8NMmveoQOjUqmo+hXtO+ORCpWhdbZ7k72UtY61BL7haGxW6enBnjw==
-
-underscore@1.8.3:
-  version "1.8.3"
-  resolved "https://registry.yarnpkg.com/underscore/-/underscore-1.8.3.tgz#4f3fb53b106e6097fcf9cb4109f2a5e9bdfa5022"
-  integrity sha1-Tz+1OxBuYJf8+ctBCfKl6b36UCI=
 
 underscore@^1.12.1:
   version "1.13.4"

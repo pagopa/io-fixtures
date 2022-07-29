@@ -8,7 +8,6 @@
     "@pagopa/io-functions-commons": "^25.5.2",
     "@pagopa/ts-commons": "^10.8.0",
     "azure-storage": "^2.10.7",
-    "documentdb": "^1.15.3",
     "dotenv": "^8.2.0",
     "faker": "^4.1.0",
     "fp-ts": "^2",
@@ -17,7 +16,6 @@
     "ulid": "^2.3.0"
   },
   "devDependencies": {
-    "@types/documentdb": "^1.10.5",
     "@types/faker": "^4.1.11",
     "@types/randomstring": "^1.1.6",
     "@types/vfile-message": "^2.0.0",
