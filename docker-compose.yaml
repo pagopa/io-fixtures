@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  storage:
+    container_name: storage
+    image: mcr.microsoft.com/azure-storage/azurite:3.18.0
+    # ports reference: 10000 for blob service, 10001 for queue service and 10002 for data tables
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    networks:
+      - main
+
+  cosmosdb:
+    image: cosmosdb
+    env_file:
+      - docker/cosmosdb/env-cosmosdb
+    build:
+      context: ./docker/cosmosdb
+      dockerfile: ./Dockerfile
+    ports:
+      - ${COSMOSDB_PORT}:3000
+    networks:
+      - main
+
+networks:
+  main:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450

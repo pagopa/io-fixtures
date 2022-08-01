@@ -78,7 +78,7 @@ const storageConnectionString = getRequiredStringEnv(
 
 const blobService = BlobServiceClient.fromConnectionString(storageConnectionString);
 const queueService = QueueServiceClient.fromConnectionString(storageConnectionString);
-const tableService = TableServiceClient.fromConnectionString(storageConnectionString);
+const tableService = TableServiceClient.fromConnectionString(storageConnectionString, { allowInsecureConnection: true });
 
 /**
  * Generate a fake fiscal code.
@@ -104,14 +104,14 @@ const createDatabase = (databaseName: string): TE.TaskEither<Error, DatabaseResp
   TE.tryCatch(
     () =>
       dbClient.databases.createIfNotExists({ id: databaseName }),
-    () =>
-      new Error(`Cannot create database ${databaseName}`)
+    (err) =>
+      new Error(`Cannot create database ${databaseName}: ${err}`)
   )
 
 const createCollection = (collectionName: string, partitionKey: string): TE.TaskEither<Error, ContainerResponse> =>
   TE.tryCatch(
     () => dbInstance.containers.createIfNotExists({ id: collectionName, partitionKey: { paths: [`/${partitionKey}`] } }),
-    () => new Error(`Cannot create ${collectionName} collection`)
+    (err) => new Error(`Cannot create ${collectionName} collection: ${err}`)
   )
 
 const serviceCollection = dbInstance.container(SERVICE_COLLECTION_NAME);
@@ -372,20 +372,20 @@ const generateUserMessageFixtures = async () => {
 const createContainer = (containerName: string): TE.TaskEither<Error, ContainerCreateIfNotExistsResponse> =>
   TE.tryCatch(
     () => blobService.getContainerClient(containerName).createIfNotExists(),
-    () => new Error("Could not create container")
+    (err) => new Error(`Could not create container: ${err}`)
   )
 
 const createQueue = (queueName: string): TE.TaskEither<Error, QueueCreateIfNotExistsResponse> =>
   TE.tryCatch(
     () => queueService.getQueueClient(queueName).createIfNotExists(),
-    () => new Error("Could not create queue")
+    (err) => new Error(`Could not create queue: ${err}`)
   )
 
 // TODO: search if createTable method rejects if the table already exists
 const createTable = (tableName: string): TE.TaskEither<Error, void> =>
   TE.tryCatch(
     () => tableService.createTable(tableName),
-    () => new Error("Could not create table")
+    (err) => new Error(`Could not create table: ${err}`)
   )
 
 const collectionOperationsArray = [

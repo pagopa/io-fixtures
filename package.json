@@ -1,7 +1,9 @@
 {
   "scripts": {
     "build": "tsc",
-    "start": "ts-node src/index.ts"
+    "start": "ts-node src/index.ts",
+    "docker:start": "docker-compose up --build",
+    "docker:stop": "docker-compose down"
   },
   "dependencies": {
     "@azure/cosmos": "^3.16.3",
