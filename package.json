@@ -14,8 +14,8 @@
     "@pagopa/ts-commons": "^10.8.0",
     "dotenv": "^8.2.0",
     "faker": "^4.1.0",
-    "fp-ts": "^2",
-    "io-ts": "^2",
+    "fp-ts": "^2.12.2",
+    "io-ts": "^2.2.17",
     "randomstring": "^1.1.5",
     "ulid": "^2.3.0"
   },

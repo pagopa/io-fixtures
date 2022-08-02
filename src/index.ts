@@ -60,6 +60,8 @@ import { createBlobService } from "azure-storage";
 import { CosmosClient, DatabaseResponse, ContainerResponse } from "@azure/cosmos";
 import { pipe } from "fp-ts/lib/function";
 import { NewMessageContent } from "@pagopa/io-functions-commons/dist/generated/definitions/NewMessageContent";
+import { SpecialServiceCategoryEnum } from "@pagopa/io-functions-commons/dist/generated/definitions/SpecialServiceCategory";
+import { ServiceScopeEnum } from "@pagopa/io-functions-commons/dist/generated/definitions/ServiceScope";
 
 const cosmosDbKey = getRequiredStringEnv("COSMOSDB_KEY");
 const cosmosDbUri = getRequiredStringEnv("COSMOSDB_URI");
@@ -234,7 +236,7 @@ const getNotificationFixture = (
           toAddress: faker.internet.exampleEmail(),
         },
         WEBHOOK: {
-          url: "https://app-backend.io.italia.it/api/v1/notify?token=seceret",
+          url: "https://app-backend.io.italia.it/api/v1/notify?token=secret",
         },
       },
       ...n,
@@ -453,6 +455,15 @@ pipe(
       E.fold(
         () => generateServiceFixtures(),
         (serviceId) => generateServiceFixtures({ serviceId })
+      )
+    )
+  ),
+  TE.map(() =>
+    pipe(
+      NonEmptyString.decode(process.env.REQ_SPECIAL_SERVICE_ID),
+      E.fold(
+        () => generateServiceFixtures(),
+        (serviceId) => generateServiceFixtures({ serviceId, serviceMetadata: { scope: ServiceScopeEnum.NATIONAL, category: SpecialServiceCategoryEnum.SPECIAL } })
       )
     )
   ),
