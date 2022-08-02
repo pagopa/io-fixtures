@@ -407,6 +407,7 @@ const collectionOperationsArray = [
 
   createCollection("user-cgns", "fiscalCode"),
   createCollection("user-eyca-cards", "fiscalCode"),
+  createCollection("activations", "fiscalCode")
 ]
 
 const containerOperationsArray = [
