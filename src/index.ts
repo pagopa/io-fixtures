@@ -70,6 +70,8 @@ import {
   CosmosClient,
   DatabaseResponse,
   ContainerResponse,
+  IndexingPolicy,
+  IndexingMode,
 } from "@azure/cosmos";
 import { pipe } from "fp-ts/lib/function";
 import { NewMessageContent } from "@pagopa/io-functions-commons/dist/generated/definitions/NewMessageContent";
@@ -77,8 +79,8 @@ import { SpecialServiceCategoryEnum } from "@pagopa/io-functions-commons/dist/ge
 import { ServiceScopeEnum } from "@pagopa/io-functions-commons/dist/generated/definitions/ServiceScope";
 import * as ROS from "fp-ts/lib/ReadonlySet";
 import * as ROA from "fp-ts/lib/ReadonlyArray";
-// eslint-disable-next-line id-blacklist
-import { string } from "fp-ts";
+import { Eq } from "fp-ts/lib/string";
+import { CompositeIndexingPolicy, IndexOrder } from "./utils/types";
 
 const cosmosDbKey = getRequiredStringEnv("COSMOSDB_KEY");
 const cosmosDbUri = getRequiredStringEnv("COSMOSDB_URI");
@@ -90,7 +92,7 @@ const authorizedRecipients: ReadonlySet<FiscalCode> = pipe(
   ROA.map(FiscalCode.decode),
   ROA.rights,
   // eslint-disable-next-line id-blacklist
-  ROS.fromReadonlyArray<FiscalCode>(string.Eq)
+  ROS.fromReadonlyArray<FiscalCode>(Eq)
 );
 
 const dbClient = new CosmosClient({
@@ -146,8 +148,7 @@ const createDatabase = (
 const createCollection = (
   collectionName: string,
   partitionKey: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  indexingPolicy?: any
+  indexingPolicy?: IndexingPolicy
 ): TE.TaskEither<Error, ContainerResponse> =>
   TE.tryCatch(
     () =>
@@ -474,16 +475,16 @@ const createTable = (tableName: string): TE.TaskEither<Error, void> =>
     (err) => new Error(`Could not create table: ${err}`)
   );
 
-const messagesCollectionIndexingPolicy = {
+const messagesCollectionIndexingPolicy: CompositeIndexingPolicy = {
   automatic: true,
   compositeIndexes: [
     [
       {
-        order: "ascending",
+        order: IndexOrder.ASC,
         path: "/fiscalCode",
       },
       {
-        order: "descending",
+        order: IndexOrder.DESC,
         path: "/id",
       },
     ],
@@ -498,7 +499,7 @@ const messagesCollectionIndexingPolicy = {
       path: "/*",
     },
   ],
-  indexingMode: "consistent",
+  indexingMode: IndexingMode.consistent,
 };
 
 const collectionOperationsArray = [
