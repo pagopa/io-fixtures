@@ -75,10 +75,23 @@ import { pipe } from "fp-ts/lib/function";
 import { NewMessageContent } from "@pagopa/io-functions-commons/dist/generated/definitions/NewMessageContent";
 import { SpecialServiceCategoryEnum } from "@pagopa/io-functions-commons/dist/generated/definitions/SpecialServiceCategory";
 import { ServiceScopeEnum } from "@pagopa/io-functions-commons/dist/generated/definitions/ServiceScope";
+import * as ROS from "fp-ts/lib/ReadonlySet";
+import * as ROA from "fp-ts/lib/ReadonlyArray";
+// eslint-disable-next-line id-blacklist
+import { string } from "fp-ts";
 
 const cosmosDbKey = getRequiredStringEnv("COSMOSDB_KEY");
 const cosmosDbUri = getRequiredStringEnv("COSMOSDB_URI");
 const cosmosDbName = getRequiredStringEnv("COSMOSDB_NAME");
+
+// this array contains the fiscal codes which the services are allowed to send messages
+const authorizedRecipients: ReadonlySet<FiscalCode> = pipe(
+  getRequiredStringEnv("AUTHORIZED_RECIPIENTS").split(","),
+  ROA.map(FiscalCode.decode),
+  ROA.rights,
+  // eslint-disable-next-line id-blacklist
+  ROS.fromReadonlyArray<FiscalCode>(string.Eq)
+);
 
 const dbClient = new CosmosClient({
   endpoint: cosmosDbUri,
@@ -132,12 +145,15 @@ const createDatabase = (
 
 const createCollection = (
   collectionName: string,
-  partitionKey: string
+  partitionKey: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  indexingPolicy?: any
 ): TE.TaskEither<Error, ContainerResponse> =>
   TE.tryCatch(
     () =>
       dbInstance.containers.createIfNotExists({
         id: collectionName,
+        indexingPolicy,
         partitionKey: { paths: [`/${partitionKey}`] },
       }),
     (err) => new Error(`Cannot create ${collectionName} collection: ${err}`)
@@ -150,7 +166,6 @@ const getServiceFixture = (s?: Partial<Service>): NewService =>
   pipe(
     NewService.decode({
       authorizedCIDRs: [],
-      authorizedRecipients: [],
       departmentName: faker.random.words(2),
       isVisible: true,
       maxAllowedPaymentAmount: faker.random.number({ max: 10000, min: 1 }),
@@ -459,9 +474,37 @@ const createTable = (tableName: string): TE.TaskEither<Error, void> =>
     (err) => new Error(`Could not create table: ${err}`)
   );
 
+const messagesCollectionIndexingPolicy = {
+  automatic: true,
+  compositeIndexes: [
+    [
+      {
+        order: "ascending",
+        path: "/fiscalCode",
+      },
+      {
+        order: "descending",
+        path: "/id",
+      },
+    ],
+  ],
+  excludedPaths: [
+    {
+      path: '/"_etag"/?',
+    },
+  ],
+  includedPaths: [
+    {
+      path: "/*",
+    },
+  ],
+  indexingMode: "consistent",
+};
+
 const collectionOperationsArray = [
   createCollection("message-status", "messageId"),
-  createCollection("messages", "fiscalCode"),
+  createCollection("messages", "fiscalCode", messagesCollectionIndexingPolicy),
+  createCollection("message-view", "fiscalCode", messagesCollectionIndexingPolicy),
   createCollection("notification-status", "notificationId"),
   createCollection("notifications", "messageId"),
   createCollection("profiles", "fiscalCode"),
@@ -524,7 +567,8 @@ pipe(
       NonEmptyString.decode(process.env.REQ_SERVICE_ID),
       E.fold(
         () => generateServiceFixtures(),
-        (serviceId) => generateServiceFixtures({ serviceId })
+        (serviceId) =>
+          generateServiceFixtures({ authorizedRecipients, serviceId })
       )
     )
   ),
@@ -535,6 +579,7 @@ pipe(
         () => generateServiceFixtures(),
         (serviceId) =>
           generateServiceFixtures({
+            authorizedRecipients,
             serviceId,
             serviceMetadata: {
               category: SpecialServiceCategoryEnum.SPECIAL,
