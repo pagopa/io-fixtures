@@ -557,6 +557,8 @@ const tableOperationsArray = [
 
   createTable("cgnleasebindings"),
   createTable("cgnexpirations"),
+
+  createTable("lockedProfiles")
 ];
 
 // MAIN PIPE
