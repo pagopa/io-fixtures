@@ -505,7 +505,11 @@ const messagesCollectionIndexingPolicy: CompositeIndexingPolicy = {
 const collectionOperationsArray = [
   createCollection("message-status", "messageId"),
   createCollection("messages", "fiscalCode", messagesCollectionIndexingPolicy),
-  createCollection("message-view", "fiscalCode", messagesCollectionIndexingPolicy),
+  createCollection(
+    "message-view",
+    "fiscalCode",
+    messagesCollectionIndexingPolicy
+  ),
   createCollection("notification-status", "notificationId"),
   createCollection("notifications", "messageId"),
   createCollection("profiles", "fiscalCode"),
@@ -558,7 +562,9 @@ const tableOperationsArray = [
   createTable("cgnleasebindings"),
   createTable("cgnexpirations"),
 
-  createTable("lockedProfiles")
+  createTable("lockedProfiles"),
+
+  createTable("uniqueEmails"),
 ];
 
 // MAIN PIPE
