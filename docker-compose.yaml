@@ -3,7 +3,7 @@ version: "3.9"
 services:
   storage:
     container_name: storage
-    image: mcr.microsoft.com/azure-storage/azurite:3.18.0
+    image: mcr.microsoft.com/azure-storage/azurite:3.18.0@sha256:fbd99a4aa4259827081ff9e5cd133a531f20fa2d1d010891fd474d5798f15d7a
     # ports reference: 10000 for blob service, 10001 for queue service and 10002 for data tables
     ports:
       - "10000:10000"
