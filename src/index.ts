@@ -525,10 +525,13 @@ const collectionOperationsArray = [
   createCollection("user-cgns", "fiscalCode"),
   createCollection("user-eyca-cards", "fiscalCode"),
   createCollection("activations", "fiscalCode"),
+
+  createCollection("lollipop-pubkeys", "assertionRef"),
 ];
 
 const containerOperationsArray = [
-  createContainer("spidassertions"),
+  createContainer("spidassertions"), // SpidLogs
+  createContainer("assertions"), // Lollipop Assertion
 
   createContainer("cached"),
   createContainer("message-content"),
@@ -546,6 +549,9 @@ const queueOperationsArray = [
   createQueue("bonusactivations"),
   createQueue("redeemed-bonuses"),
   createQueue("eycaactivations"),
+
+  createQueue("pubkeys-revoke"),
+  createQueue("userslogin"),
 ];
 
 const tableOperationsArray = [
